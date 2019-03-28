@@ -3,6 +3,7 @@ import asyncio
 import os.path
 
 import requests
+from aiohttp import web
 
 from cli_common.log import get_logger
 from cli_common.pulse import run_consumer
@@ -56,6 +57,9 @@ class HookPhabricator(Hook):
         assert len(diffs) == 1
         self.latest_id = diffs[0]['id']
 
+        # Add web route for new code review
+        self.routes.append(web.post('/codereview/new', self.new_code_review))
+
     def list_differential(self):
         '''
         List new differential items using pagination
@@ -93,32 +97,76 @@ class HookPhabricator(Hook):
                     logger.info('Skipping differential, not a diff', id=diff['id'], type=diff['type'])
                     continue
 
-                # Load revision to check the repository is authorized
-                rev = self.api.load_revision(diff['revisionPHID'])
-                repo_phid = rev['fields']['repositoryPHID']
-                if repo_phid not in self.repos:
-                    logger.info('Skipping differential, repo not enabled', id=diff['id'], repo=repo_phid)
-                    continue
-
-                # Create new task
-                if ACTION_TASKCLUSTER in self.actions:
-                    await self.create_task({
-                        'ANALYSIS_SOURCE': 'phabricator',
-                        'ANALYSIS_ID': diff['phid']
-                    })
-                else:
-                    logger.info('Skipping Taskcluster task', diff=diff['phid'])
-
-                # Put message in mercurial queue for try jobs
-                if ACTION_TRY in self.actions:
-                    assert self.mercurial_queue is not None, \
-                        'No mercurial queue to push on try!'
-                    await self.mercurial_queue.put(diff)
-                else:
-                    logger.info('Skipping Try job', diff=diff['phid'])
+                # Try to trigger a task using supported actions
+                await self.trigger_task(diff)
 
             # Sleep a bit before trying new diffs
             await asyncio.sleep(60)
+
+    async def new_code_review(self, request):
+        '''
+        HTTP webhook used by HarborMaster on new diffs
+        '''
+        diff_phid = request.rel_url.query.get('diff')
+        repo_phid = request.rel_url.query.get('repo')
+
+        if not diff_phid or not repo_phid:
+            logger.error('Invalid webhook parameters', path=request.path_qs)
+            raise web.HTTPBadRequest()
+
+        try:
+            logger.info('Triggering task from webhook', diff=diff_phid, repo=repo_phid)
+            created = await self.trigger_task(
+                diff_phid=diff_phid,
+                repo_phid=repo_phid,
+            )
+        except Exception as e:
+            logger.error('Failed to trigger task from webhook', error=str(e))
+            raise web.HTTPInternalServerError()
+
+        return web.Response(text=created and 'Task started' or 'Skipped')
+
+    async def trigger_task(self, diff={}, diff_phid=None, repo_phid=None):
+        '''
+        Trigger a code review task using configured modes: Try or Taskcluster
+        '''
+
+        if diff and diff_phid is None:
+            diff_phid = diff['phid']
+        else:
+            # Load full diff from API
+            diffs = self.api.search_diffs(diff_phid=diff_phid)
+            print(diff_phid, diffs)
+            if not diffs:
+                raise Exception('No diff found')
+            diff = diffs[0]
+
+        # Check repo is supported
+        if repo_phid is None and 'revisionPHID' in diff:
+            rev = self.api.load_revision(diff['revisionPHID'])
+            repo_phid = rev['fields']['repositoryPHID']
+        if repo_phid not in self.repos:
+            logger.info('Skipping differential, repo not enabled', diff=diff_phid, repo=repo_phid)
+            return False
+
+        # Create new task
+        if ACTION_TASKCLUSTER in self.actions:
+            await self.create_task({
+                'ANALYSIS_SOURCE': 'phabricator',
+                'ANALYSIS_ID': diff_phid
+            })
+        else:
+            logger.info('Skipping Taskcluster task', diff=diff_phid)
+
+        # Put message in mercurial queue for try jobs
+        if ACTION_TRY in self.actions:
+            assert self.mercurial_queue is not None, \
+                'No mercurial queue to push on try!'
+            await self.mercurial_queue.put(diff)
+        else:
+            logger.info('Skipping Try job', diff=diff_phid)
+
+        return True
 
 
 class HookCodeCoverage(PulseHook):
@@ -210,6 +258,7 @@ class PulseListener(object):
                  pulse_password,
                  hooks_configuration,
                  mercurial_conf,
+                 http_port,
                  phabricator_api,
                  cache_root,
                  taskcluster_client_id=None,
@@ -222,6 +271,9 @@ class PulseListener(object):
         self.taskcluster_client_id = taskcluster_client_id
         self.taskcluster_access_token = taskcluster_access_token
         self.phabricator_api = phabricator_api
+
+        assert isinstance(http_port, int) and http_port > 0, 'Invalid HTTP port'
+        self.http_port = http_port
 
         task_monitoring.connect_taskcluster(
             self.taskcluster_client_id,
@@ -275,6 +327,9 @@ class PulseListener(object):
         if self.mercurial is not None:
             consumers.append(self.mercurial.run())
 
+        # Hooks through web server
+        consumers.append(self.build_webserver(hooks))
+
         # Run all consumers together
         run_consumer(asyncio.gather(*consumers))
 
@@ -294,6 +349,25 @@ class PulseListener(object):
             raise Exception('Unsupported hook {}'.format(conf['type']))
 
         return hook_class(conf)
+
+    def build_webserver(self, hooks):
+        '''
+        Build an async web server used by hooks
+        '''
+        app = web.Application()
+
+        # Always add a simple test endpoint
+        async def ping(request):
+            return web.Response(text='pong')
+
+        app.add_routes([web.get('/ping', ping)])
+
+        # Add routes from hooks
+        for hook in hooks:
+            app.add_routes(hook.routes)
+
+        # Finally build the webserver coroutine
+        return web._run_app(app, port=self.http_port, print=logger.info)
 
     def add_revision(self, revision):
         '''
