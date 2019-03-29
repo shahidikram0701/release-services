@@ -258,7 +258,6 @@ class PulseListener(object):
                  pulse_password,
                  hooks_configuration,
                  mercurial_conf,
-                 http_port,
                  phabricator_api,
                  cache_root,
                  taskcluster_client_id=None,
@@ -271,9 +270,8 @@ class PulseListener(object):
         self.taskcluster_client_id = taskcluster_client_id
         self.taskcluster_access_token = taskcluster_access_token
         self.phabricator_api = phabricator_api
-
-        assert isinstance(http_port, int) and http_port > 0, 'Invalid HTTP port'
-        self.http_port = http_port
+        self.http_port = int(os.environ.get('PORT', 9000))
+        logger.info('HTTP webhook server will listen', port=self.http_port)
 
         task_monitoring.connect_taskcluster(
             self.taskcluster_client_id,
