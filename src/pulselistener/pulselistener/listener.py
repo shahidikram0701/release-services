@@ -19,6 +19,9 @@ logger = get_logger(__name__)
 ACTION_TASKCLUSTER = 'taskcluster'
 ACTION_TRY = 'try'
 
+MODE_PHABRICATOR_POLLING = 'polling'
+MODE_PHABRICATOR_WEBHOOK = 'webhook'
+
 
 class HookPhabricator(Hook):
     '''
@@ -33,6 +36,11 @@ class HookPhabricator(Hook):
             'project-releng',
             configuration['hookId'],
         )
+
+        # Choose a mode between polling and webhook
+        self.mode = configuration.get('mode', MODE_PHABRICATOR_POLLING)
+        assert self.mode in (MODE_PHABRICATOR_POLLING, MODE_PHABRICATOR_WEBHOOK)
+        logger.info('Running in mode', mode=self.mode)
 
         # Connect to Phabricator API
         assert 'phabricator_api' in configuration
@@ -58,7 +66,8 @@ class HookPhabricator(Hook):
         self.latest_id = diffs[0]['id']
 
         # Add web route for new code review
-        self.routes.append(web.post('/codereview/new', self.new_code_review))
+        if self.mode == MODE_PHABRICATOR_WEBHOOK:
+            self.routes.append(web.post('/codereview/new', self.new_code_review))
 
     def list_differential(self):
         '''
@@ -89,6 +98,9 @@ class HookPhabricator(Hook):
         '''
         Query phabricator differentials regularly
         '''
+        if self.mode != MODE_PHABRICATOR_POLLING:
+            return
+
         while True:
 
             # Get new differential ids
@@ -136,7 +148,6 @@ class HookPhabricator(Hook):
         else:
             # Load full diff from API
             diffs = self.api.search_diffs(diff_phid=diff_phid)
-            print(diff_phid, diffs)
             if not diffs:
                 raise Exception('No diff found')
             diff = diffs[0]
