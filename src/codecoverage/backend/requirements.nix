@@ -2,7 +2,7 @@
 # See more at: https://github.com/garbas/pypi2nix
 #
 # COMMAND:
-#   pypi2nix -v -C /app/src/codecoverage/backend/../../../tmp/pypi2nix -V 3.7 -O ../../../nix/requirements_override.nix -s intreehooks -s flit -s vcversioner -s pytest-runner -s setuptools-scm -r requirements.txt -r requirements-dev.txt
+#   pypi2nix -v -C /tmp/release-services-9sytmvhk/src/codecoverage/backend/../../../tmp/pypi2nix -V 3.7 -O ../../../nix/requirements_override.nix -s intreehooks -s flit -s vcversioner -s pytest-runner -s setuptools-scm -r requirements.txt -r requirements-dev.txt
 #
 
 { pkgs ? import <nixpkgs> {},
@@ -130,10 +130,10 @@ let
     };
 
     "Flask-Caching" = python.mkDerivation {
-      name = "Flask-Caching-1.6.0";
+      name = "Flask-Caching-1.7.0";
       src = pkgs.fetchurl {
-        url = "https://files.pythonhosted.org/packages/42/b1/1a672c16ded7e0a441efb976f173e4c5fb8be489664778575b32dd8b8c2d/Flask-Caching-1.6.0.tar.gz";
-        sha256 = "92368bd8c3a6aa4164c7322335134c912cd8462a4b83de4904929da38863de95";
+        url = "https://files.pythonhosted.org/packages/f9/0c/49b8080fa8e61a34073dce7664b566504447e552b9fac0966d06fcaaca3e/Flask-Caching-1.7.0.tar.gz";
+        sha256 = "7b3ff88348dcc97ebd6d32478c3e40229c6b7039ed5fb7dabb23d411777bfcc1";
       };
       doCheck = commonDoCheck;
       checkPhase = "";
@@ -602,10 +602,10 @@ let
     };
 
     "boto3" = python.mkDerivation {
-      name = "boto3-1.9.120";
+      name = "boto3-1.9.125";
       src = pkgs.fetchurl {
-        url = "https://files.pythonhosted.org/packages/1e/d0/93a6b181d39e8f161f4ee5bc6cb3b5e465bf655869607d502eb493811d50/boto3-1.9.120.tar.gz";
-        sha256 = "39e9b6516a72864f5a6b69f38edac087cc4ba623095f4528b916620e63de32b3";
+        url = "https://files.pythonhosted.org/packages/ea/dd/3f3188d9278fe9ac7f28a59d7c9b08d4a4aa8cac0e4238d2ff5049c939e7/boto3-1.9.125.tar.gz";
+        sha256 = "a791e676b2c43e49ecaf43961156a11dbb59a7ead07c1c80cf7237ec7608a6fa";
       };
       doCheck = commonDoCheck;
       checkPhase = "";
@@ -624,10 +624,10 @@ let
     };
 
     "botocore" = python.mkDerivation {
-      name = "botocore-1.12.120";
+      name = "botocore-1.12.125";
       src = pkgs.fetchurl {
-        url = "https://files.pythonhosted.org/packages/e7/ec/54541b6d432d76df6b92d777de8f15c2251d075a7a59cee1c280be929ec5/botocore-1.12.120.tar.gz";
-        sha256 = "c0f9c57e7a8c65f17a62a0926c3e73686f6ae1c08abf3b5a63cc3a5bcc4c437b";
+        url = "https://files.pythonhosted.org/packages/eb/6e/2b8ec3bb5278a068459a4c53de26a8790e8b5c41eb5ae75d23792a5275b4/botocore-1.12.125.tar.gz";
+        sha256 = "ac9585c2afdf81929ccb69b8e6919ec64f3693cc7d3f4f216f292f63312111cf";
       };
       doCheck = commonDoCheck;
       checkPhase = "";
@@ -818,10 +818,10 @@ let
     };
 
     "datadog" = python.mkDerivation {
-      name = "datadog-0.27.0";
+      name = "datadog-0.28.0";
       src = pkgs.fetchurl {
-        url = "https://files.pythonhosted.org/packages/4a/98/6a6120bb29e1039522ae2e64c2c6d83764fba3ec769eed654766e262c989/datadog-0.27.0.tar.gz";
-        sha256 = "9487480fd4b5898b665384f95eeb0cbca4ec998bb58224b7bb60fff3978191ad";
+        url = "https://files.pythonhosted.org/packages/70/50/6f90305b44fa544656a4784d208caff3883498dfddae2ff4f0dcf17354f6/datadog-0.28.0.tar.gz";
+        sha256 = "eb6f2707151be8851f7da3768e605ac92ec45464fc48d5a878d0b6e08610dd8b";
       };
       doCheck = commonDoCheck;
       checkPhase = "";
@@ -1500,10 +1500,10 @@ let
     };
 
     "more-itertools" = python.mkDerivation {
-      name = "more-itertools-6.0.0";
+      name = "more-itertools-7.0.0";
       src = pkgs.fetchurl {
-        url = "https://files.pythonhosted.org/packages/dd/f4/cdfbb6f07f767e0cd8a11b16adfecc735b6eb87dbebda026ce8898e1cc22/more-itertools-6.0.0.tar.gz";
-        sha256 = "590044e3942351a1bdb1de960b739ff4ce277960f2425ad4509446dbace8d9d1";
+        url = "https://files.pythonhosted.org/packages/29/ed/3a85eb4afdce6dc33e78dad885e17c678db8055bf65353e0de4944c72a40/more-itertools-7.0.0.tar.gz";
+        sha256 = "c3e4748ba1aad8dba30a4886b0b1a2004f9a863837b8654e7059eebf727afa5a";
       };
       doCheck = commonDoCheck;
       checkPhase = "";
